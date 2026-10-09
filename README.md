@@ -4,7 +4,7 @@
 
 **适用于 STranslate 的 Merriam-Webster 英英词典插件**
 
-基于 [dictionaryapi.com](https://dictionaryapi.com/) 官方 API 开发，在 STranslate 里查单词时直接给出英英释义、音标、真人发音、派生词与词形变化。
+基于 [dictionaryapi.com](https://dictionaryapi.com/) 官方 API 开发，在 STranslate 里查单词时直接给出英英释义、音标、真人发音、派生词与词形变化 —— 排版上参考 STranslate 内置必应词典：例句单独成栏、复数与过去式等词形变化填到对应卡片，不再与释义混在一起。
 
 </div>
 
@@ -37,11 +37,30 @@
 ```text
 language  /ˈlæŋɡwɪdʒ/  🔊
 noun
-  idioma (masculine), lengua (feminine)   例: the English language → el idioma inglés
-  lenguaje (masculine)                    例: body language → lenguaje corporal
+  idioma (masculine), lengua (feminine)
+  lenguaje (masculine)
+
+例句
+  • the English language → el idioma inglés
+  • body language → lenguaje corporal
 ```
 
-其中 `(masculine)` 来自响应里的 `gl` 字段、`→ el idioma inglés` 来自例句里的 `tr` 字段 —— 这两项是英西库区别于英英库的核心信息，插件已专门解析。
+其中 `(masculine)` 来自响应里的 `gl` 字段、`→ el idioma inglés` 来自例句里的 `tr` 字段 —— 这两项是英西库区别于英英库的核心信息，插件已专门解析。例句单独成栏，定义行不再被 `例: ...` 内联打乱。
+
+### 1.0.3 之后：例句与词形变化拆开
+
+从 **1.0.3** 起，释义区、**例句区**、**词形变化卡片**互不混在一起 —— 学习必应词典对 `DictionaryResult` 各字段的处理方式：
+
+| 数据 | 落点 | 在宿主里的呈现 |
+| --- | --- | --- |
+| 音标 / 发音 | `result.Symbols[].Phonetic` / `AudioUrl` | 词头旁边的 `/ˈθrɛʃhoʊld/` + 🔊 |
+| 释义正文 | `result.DictMeans.Means` | 按词性分组，去掉了行内 `例:` |
+| 例句 | `result.Sentences` | 单独一栏「例句」，每条一行 |
+| 复数 | `result.Plurals` | 顶部小卡片「复数：thresholds」 |
+| 过去式 / 过去分词 / 现在分词 / 第三人称单数 | `PastTense` / `PastParticiple` / `PresentParticiple` / `ThirdPersonSingular` | 动词卡片对应字段 |
+| 比较级 / 最高级 | `result.Comparative` / `Superlative` | 形容词 / 副词卡片对应字段 |
+
+以 `threshold` 为例，**修复前**是「定义+例句糊成一段」，**修复后**拆成「noun 两行 + 例句三行 + 复数 thresholds」，看起来会清爽很多。
 
 ### 查中文会看到什么
 
@@ -67,10 +86,12 @@ Invalid API key. Not subscribed for this reference.
 
 - 📖 **英英释义**：按词性（noun / verb / adjective …）分组的完整释义，自动展开 `sseq` 嵌套义项与 `sdsense`（"also / especially"）补充义项。
 - 🗣️ **英西双语**：选用 `Spanish-English` 库时，返回西班牙语对译词，并解析 `gl` 性别标注与例句 `tr` 译文。
-- 🔊 **音标与真人发音**：Merriam-Webster 音标写法 + 官方 mp3 发音（插件会按官方规则自动推导音频地址）。
-- 🌱 **派生词与词形变化**：`uros` 派生词单独成组，`stems` 屈折形式放入标签。
-- 📝 **例句**：可开关，从 `vis` 中提取，附在释义后。
+- 🔊 **音标与真人发音**：Merriam-Webster 音标写法 + 官方 mp3 发音（插件会按官方规则自动推导音频地址），落进 `Symbols`，宿主渲染成 `/ˈθrɛʃhoʊld/` + 🔊。
+- 📝 **例句单独成栏**：`vis` 中的例句不再用 `例:` 内联糊在定义里，而是放进 SDK 的 `Sentences` 集合，由宿主单独渲染（与必应词典一致）。
+- 🌱 **词形变化卡片**：从 `infl` 字段解析复数 / 过去式 / 过去分词 / 现在分词 / 第三人称单数 / 比较级 / 最高级，分别填进 `Plurals` / `PastTense` / `PastParticiple` / `PresentParticiple` / `ThirdPersonSingular` / `Comparative` / `Superlative`，由宿主对应卡片渲染。
+- 🌿 **派生词**：`uros` 派生词单独成组，`stems` 屈折形式放入标签。
 - 🔁 **词典兜底**：当选用的词典查不到词时，可自动回退到 Collegiate 再查一次。
+- 🛡️ **非拉丁文字客户端拦截**：中文 / 日文 / 韩文 / 西里尔文等不发请求，避免消耗配额、避免把接口返回的「key 无效」误报给用户（v1.0.2 起）。
 - 🧹 **标记清理**：把 `{bc}`、`{sx|…||}`、`{wi}…{/wi}` 等排版 token 还原成可读纯文本。
 
 ## 📦 安装
@@ -85,7 +106,7 @@ Invalid API key. Not subscribed for this reference.
 | --- | --- |
 | **API Key** | 在 [dictionaryapi.com](https://dictionaryapi.com/) 注册后获取。**Collegiate** 与 **Learner's** 两个 Key 都能直接用。 |
 | **词典** | `Collegiate (英英)` / `Learner's (英英)` / `Medical (英英)` / `Spanish-English (英西双语)`。后三者需要**单独订阅**，Key 无权限时会自动回退到 Collegiate。 |
-| **附带例句** | 是否在释义后追加例句。 |
+| **附带例句** | 是否展示例句区。开启后，例句放进独立的「例句」栏，不再与定义混在一起。 |
 | **回退到 Collegiate** | 当前词典无结果时是否再用 Collegiate 查一次。 |
 
 ### 获取 API Key

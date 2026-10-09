@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.3
+
+- **重做释义排版：例句与词形变化独立成区，不再混在定义里。**
+  学习 STranslate 内置必应词典的处理方式：
+  - **音标 / 发音音频**：每条发音独立成 `Symbol`（Label 标 `us` / `uk` / `zh`），由宿主渲染成 `/ˈθrɛʃhoʊld/` + 小喇叭按钮。
+  - **例句**：从 `DictMeans.Means` 抽离出来，填入 `DictionaryResult.Sentences`，宿主会单独渲染成一栏，
+    不再与定义行用 `例: ...` 内联糊在一起。
+  - **词形变化**：`infl` 字段（复数 / 过去式 / 过去分词 / 现在分词 / 第三人称单数 / 比较级 / 最高级）
+    解析后填入 SDK 专门的集合 `Plurals` / `PastTense` / `PastParticiple` / `PresentParticiple` /
+    `ThirdPersonSingular` / `Comparative` / `Superlative`，由宿主对应卡片渲染。
+- 解析层拆分：`ExtractSenses` → `ExtractDefinitions` + `ExtractSentences` + `ExtractInflections`，
+  三种信息不再共用同一份缓存，调用方各取所需。
+- `MerriamApiException` 解析路径保持不变，鉴权错误分类依然准确。
+- 测试断言由 96 条增加到 **115 条**：新增 `ThresholdJson` / `RunJson` / `GoodJson` 三个 fixture，
+  覆盖名词复数、不规则动词屈折、不规则形容词比较级，新增 `TestInflections` 集成断言。
+
 ## 1.0.2
 
 - **修复：查询中文（及其他非拉丁文字）时误报「Invalid API key. Not subscribed for this reference.」。**

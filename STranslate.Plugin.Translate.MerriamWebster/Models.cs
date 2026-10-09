@@ -30,6 +30,23 @@ public class MwEntry
     [JsonPropertyName("uros")]
     public List<MwRunOn>? UndefinedRunOns { get; set; }
 
+    /// <summary>
+    /// 变形形式：复数、过去式、过去分词、现在分词、第三人称单数、比较级、最高级。
+    /// 动词和名词都会带；动词若同时存在 <see cref="VerbalInflections"/>，通常 <c>infl</c> 是简表。
+    /// 形态：<c>[{ "infl": "thresholds", "label": "plural" }]</c>。
+    /// </summary>
+    [JsonPropertyName("infl")]
+    public List<MwInflection>? Inflections { get; set; }
+
+    /// <summary>
+    /// 动词屈折变化表（verb rections），结构深嵌套。
+    /// System.Text.Json 无法直接映射成强类型，保留原始 <see cref="JsonElement"/> 逐项解析。
+    /// 例如 "be" 这类强变化动词会返回完整 <c>vrs</c> 表；
+    /// 同时存在 <c>infl</c> 时通常重复出现，二者取其一即可。
+    /// </summary>
+    [JsonPropertyName("vrs")]
+    public JsonElement? VerbalInflections { get; set; }
+
     /// <summary>简明词典（如医学、法律）返回的补充段落。</summary>
     [JsonPropertyName("suppl")]
     public MwSupplemental? Supplemental { get; set; }
@@ -98,6 +115,23 @@ public class MwRunOn
     /// <summary>run-on 的词性。</summary>
     [JsonPropertyName("fl")]
     public string? FunctionalLabel { get; set; }
+}
+
+/// <summary>
+/// 一条屈折变化形式。
+/// 形态：<c>{ "infl": "thresholds", "label": "plural" }</c>。
+/// label 常见值：plural / past / past participle / present participle /
+///              third person singular / comparative / superlative。
+/// </summary>
+public class MwInflection
+{
+    /// <summary>屈折形式本体，例如 "thresholds"、"ran"、"running"。</summary>
+    [JsonPropertyName("infl")]
+    public string? Form { get; set; }
+
+    /// <summary>类型标签，参见类注释。</summary>
+    [JsonPropertyName("label")]
+    public string? Label { get; set; }
 }
 
 /// <summary>补充信息（部分词典以段落形式给出释义）。</summary>

@@ -86,8 +86,12 @@ public static class MerriamParser
     public static string FormatHeadword(string? headword) =>
         string.IsNullOrWhiteSpace(headword) ? string.Empty : CleanMarkup(headword.Replace("*", string.Empty));
 
-    /// <summary>提取条目的全部义项文本。</summary>
-    public static List<string> ExtractSenses(MwEntry entry, bool showExamples)
+    /// <summary>
+    /// 提取该条目的全部「纯定义」文本（不混入例句）。
+    /// 例句应通过 <see cref="ExtractSentences"/> 单独获取，再放进 DictionaryResult.Sentences。
+    /// 复数 / 过去式等词形变化通过 <see cref="ExtractInflections"/> 获取。
+    /// </summary>
+    public static List<string> ExtractDefinitions(MwEntry entry)
     {
         var means = new List<string>();
 
@@ -96,7 +100,6 @@ public static class MerriamParser
             if (group.SenseSequence is not { ValueKind: JsonValueKind.Array } sseq)
                 continue;
 
-            // sseq -> 义项组 -> [ "sense", {...} ]
             foreach (var senseGroup in sseq.EnumerateArray())
             {
                 if (senseGroup.ValueKind != JsonValueKind.Array)
@@ -105,7 +108,7 @@ public static class MerriamParser
                 foreach (var wrapper in senseGroup.EnumerateArray())
                 {
                     if (wrapper.ValueKind == JsonValueKind.Array && wrapper.GetArrayLength() >= 2)
-                        CollectSenseText(wrapper[1], means, showExamples);
+                        CollectDefinitionText(wrapper[1], means);
                 }
             }
         }
@@ -124,25 +127,86 @@ public static class MerriamParser
     }
 
     /// <summary>
-    /// 展开一个 sense：主释义一行；sdsense 补充释义单独一行；复合义项追加子义项。
+    /// 提取该条目的全部例句。
+    /// 西英库的例句会带译文（t → tr 拼接成 "原句 → 译文"）。
     /// </summary>
-    private static void CollectSenseText(JsonElement sense, List<string> means, bool showExamples)
+    public static List<string> ExtractSentences(MwEntry entry)
+    {
+        var sentences = new List<string>();
+
+        foreach (var group in entry.Definitions ?? [])
+        {
+            if (group.SenseSequence is not { ValueKind: JsonValueKind.Array } sseq)
+                continue;
+
+            foreach (var senseGroup in sseq.EnumerateArray())
+            {
+                if (senseGroup.ValueKind != JsonValueKind.Array)
+                    continue;
+
+                foreach (var wrapper in senseGroup.EnumerateArray())
+                {
+                    if (wrapper.ValueKind == JsonValueKind.Array && wrapper.GetArrayLength() >= 2)
+                        CollectSentenceText(wrapper[1], sentences);
+                }
+            }
+        }
+
+        return sentences;
+    }
+
+    /// <summary>
+    /// 提取屈折变化形式（复数、过去式、过去分词、现在分词、第三人称单数、比较级、最高级）。
+    /// 仅解析 <c>infl</c> 字段；<c>vrs</c>（动词屈折表）结构过深，暂不展开。
+    /// 返回标签 → 形式列表的字典，未识别的标签归入 <c>"other"</c>。
+    /// </summary>
+    public static Dictionary<string, List<string>> ExtractInflections(MwEntry entry)
+    {
+        var result = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+        if (entry.Inflections is null)
+            return result;
+
+        foreach (var infl in entry.Inflections)
+        {
+            if (string.IsNullOrWhiteSpace(infl.Form) || string.IsNullOrWhiteSpace(infl.Label))
+                continue;
+
+            var label = infl.Label.Trim();
+            var form = infl.Form.Trim();
+            if (form.Length == 0) continue;
+
+            if (!result.TryGetValue(label, out var bucket))
+            {
+                bucket = [];
+                result[label] = bucket;
+            }
+            if (!bucket.Contains(form))
+                bucket.Add(form);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 展开一个 sense 的「定义」部分：主释义一行；sdsense 补充释义单独一行；复合义项追加子义项。
+    /// 不取例句（例句由 <see cref="CollectSentenceText"/> 单独收集）。
+    /// </summary>
+    private static void CollectDefinitionText(JsonElement sense, List<string> means)
     {
         if (sense.ValueKind != JsonValueKind.Object)
             return;
 
         var texts = new List<string>();
-        var examples = new List<string>();
         if (sense.TryGetProperty("dt", out var dt))
-            ExtractDt(dt, texts, examples);
-        AddSenseLine(texts, examples, means, showExamples);
+            ExtractDefinitionTextFromDt(dt, texts);
+        AddDefinitionLine(texts, means);
 
         if (sense.TryGetProperty("sdsense", out var sdSense) && sdSense.ValueKind == JsonValueKind.Object)
         {
             var sdTexts = new List<string>();
-            var sdExamples = new List<string>();
             if (sdSense.TryGetProperty("dt", out var sdDt))
-                ExtractDt(sdDt, sdTexts, sdExamples);
+                ExtractDefinitionTextFromDt(sdDt, sdTexts);
 
             var label = sdSense.TryGetProperty("sd", out var sdValue) && sdValue.ValueKind == JsonValueKind.String
                 ? sdValue.GetString()?.Trim()
@@ -161,7 +225,7 @@ public static class MerriamParser
                 }
             }
 
-            AddSenseLine(sdTexts, sdExamples, means, showExamples);
+            AddDefinitionLine(sdTexts, means);
         }
 
         if (sense.TryGetProperty("sseq", out var childSeq) && childSeq.ValueKind == JsonValueKind.Array)
@@ -176,32 +240,61 @@ public static class MerriamParser
                     if (childWrapper.ValueKind != JsonValueKind.Array || childWrapper.GetArrayLength() < 2)
                         continue;
 
-                    CollectSenseText(childWrapper[1], means, showExamples);
+                    CollectDefinitionText(childWrapper[1], means);
                 }
             }
         }
     }
 
-    private static void AddSenseLine(List<string> texts, List<string> examples, List<string> means, bool showExamples)
+    /// <summary>
+    /// 展开一个 sense 的「例句」部分：仅收集 <c>vis</c>，不收 <c>text</c> / <c>gl</c>。
+    /// </summary>
+    private static void CollectSentenceText(JsonElement sense, List<string> sentences)
+    {
+        if (sense.ValueKind != JsonValueKind.Object)
+            return;
+
+        if (sense.TryGetProperty("dt", out var dt))
+            ExtractSentenceFromDt(dt, sentences);
+
+        if (sense.TryGetProperty("sdsense", out var sdSense) && sdSense.ValueKind == JsonValueKind.Object)
+        {
+            if (sdSense.TryGetProperty("dt", out var sdDt))
+                ExtractSentenceFromDt(sdDt, sentences);
+        }
+
+        if (sense.TryGetProperty("sseq", out var childSeq) && childSeq.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var childGroup in childSeq.EnumerateArray())
+            {
+                if (childGroup.ValueKind != JsonValueKind.Array)
+                    continue;
+
+                foreach (var childWrapper in childGroup.EnumerateArray())
+                {
+                    if (childWrapper.ValueKind != JsonValueKind.Array || childWrapper.GetArrayLength() < 2)
+                        continue;
+
+                    CollectSentenceText(childWrapper[1], sentences);
+                }
+            }
+        }
+    }
+
+    private static void AddDefinitionLine(List<string> texts, List<string> means)
     {
         var text = string.Join("; ", texts.Where(s => !string.IsNullOrWhiteSpace(s)));
         if (string.IsNullOrWhiteSpace(text))
             return;
-
-        if (showExamples && examples.Count > 0)
-            text += $"  例: {string.Join(" | ", examples.Take(3))}";
 
         if (!means.Contains(text))
             means.Add(text);
     }
 
     /// <summary>
-    /// 从 dt 数组中提取定义文本与例句。
-    /// 除 text / vis 外，还处理：
-    /// - gl（gloss）：词性 / 性别标注，常见于西英词典，如 masculine / feminine，用括号附加。
-    /// - vis 项里的 tr：例句的译文，西英词典专有，与英文例句一并给出。
+    /// 从 dt 中只收集定义正文（text / gl），不收例句（vis）。
     /// </summary>
-    private static void ExtractDt(JsonElement dt, List<string> texts, List<string> examples)
+    private static void ExtractDefinitionTextFromDt(JsonElement dt, List<string> texts)
     {
         if (dt.ValueKind != JsonValueKind.Array)
             return;
@@ -228,29 +321,48 @@ public static class MerriamParser
                     if (!string.IsNullOrWhiteSpace(gloss))
                         texts.Add($"({gloss})");
                     break;
+            }
+        }
+    }
 
-                case "vis" when payload.ValueKind == JsonValueKind.Array:
-                    foreach (var illustration in payload.EnumerateArray())
-                    {
-                        if (illustration.ValueKind != JsonValueKind.Object ||
-                            !illustration.TryGetProperty("t", out var t))
-                            continue;
+    /// <summary>
+    /// 从 dt 中只收集例句（vis），不收定义正文。
+    /// </summary>
+    private static void ExtractSentenceFromDt(JsonElement dt, List<string> sentences)
+    {
+        if (dt.ValueKind != JsonValueKind.Array)
+            return;
 
-                        var example = CleanMarkup(t.GetString());
-                        if (string.IsNullOrWhiteSpace(example))
-                            continue;
+        foreach (var item in dt.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Array || item.GetArrayLength() < 2)
+                continue;
 
-                        // 西英词典的例句带 tr 译文
-                        if (illustration.TryGetProperty("tr", out var tr))
-                        {
-                            var translation = CleanMarkup(tr.GetString());
-                            if (!string.IsNullOrWhiteSpace(translation))
-                                example = $"{example} → {translation}";
-                        }
+            var type = item[0].GetString();
+            var payload = item[1];
 
-                        examples.Add(example);
-                    }
-                    break;
+            if (type != "vis" || payload.ValueKind != JsonValueKind.Array)
+                continue;
+
+            foreach (var illustration in payload.EnumerateArray())
+            {
+                if (illustration.ValueKind != JsonValueKind.Object ||
+                    !illustration.TryGetProperty("t", out var t))
+                    continue;
+
+                var example = CleanMarkup(t.GetString());
+                if (string.IsNullOrWhiteSpace(example))
+                    continue;
+
+                // 西英词典的例句带 tr 译文
+                if (illustration.TryGetProperty("tr", out var tr))
+                {
+                    var translation = CleanMarkup(tr.GetString());
+                    if (!string.IsNullOrWhiteSpace(translation))
+                        example = $"{example} → {translation}";
+                }
+
+                sentences.Add(example);
             }
         }
     }

@@ -3,7 +3,7 @@
   "Name": "Merriam-Webster",
   "Description": "Merriam-Webster dictionary plugin for STranslate",
   "Author": "mantou2046",
-  "Version": "1.0.2",
+  "Version": "1.0.3",
   "Website": "https://github.com/mantou2046/STranslate.Plugin.Translate.MerriamWebster",
   "ExecuteFileName": "STranslate.Plugin.Translate.MerriamWebster.dll",
   "IconPath": "icon.png"

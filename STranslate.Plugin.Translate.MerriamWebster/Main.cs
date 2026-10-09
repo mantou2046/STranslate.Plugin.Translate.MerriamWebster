@@ -207,7 +207,7 @@ public class Main : DictionaryPluginBase
             });
         }
 
-        // 按词性分组填充释义
+        // 按词性分组填充释义（不混入例句）
         var grouped = new Dictionary<string, ObservableCollection<string>>();
         var order = new List<string>();
 
@@ -217,8 +217,8 @@ public class Main : DictionaryPluginBase
                 ? fallbackLabel
                 : entry.FunctionalLabel!.Trim();
 
-            var means = MerriamParser.ExtractSenses(entry, showExamples);
-            if (means.Count == 0)
+            var definitions = MerriamParser.ExtractDefinitions(entry);
+            if (definitions.Count == 0)
                 continue;
 
             if (!grouped.TryGetValue(partOfSpeech, out var bucket))
@@ -228,10 +228,10 @@ public class Main : DictionaryPluginBase
                 order.Add(partOfSpeech);
             }
 
-            foreach (var mean in means)
+            foreach (var def in definitions)
             {
-                if (!bucket.Contains(mean))
-                    bucket.Add(mean);
+                if (!bucket.Contains(def))
+                    bucket.Add(def);
             }
         }
 
@@ -243,6 +243,49 @@ public class Main : DictionaryPluginBase
                 Means = grouped[partOfSpeech]
             });
             filled = true;
+        }
+
+        // 例句放进专门的 Sentences 集合，不和定义混在一起。
+        // 学习必应词典的处理：定义走 DictMeans.Means，例句独立成区。
+        if (showExamples)
+        {
+            var sentences = entries
+                .SelectMany(MerriamParser.ExtractSentences)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct()
+                .Take(20) // 接口有时会给出几十条例句，多数场景用不到这么多
+                .ToList();
+
+            foreach (var sentence in sentences)
+                result.Sentences.Add(sentence);
+        }
+
+        // 词形变化（复数 / 过去式 / 比较级等）映射到 SDK 专门的集合。
+        // 每个标签只取一次（一个词条里同一标签通常也只有一个值）。
+        foreach (var entry in entries)
+        {
+            foreach (var (label, forms) in MerriamParser.ExtractInflections(entry))
+            {
+                var bucket = label.ToLowerInvariant() switch
+                {
+                    "plural" => result.Plurals,
+                    "plural form" => result.Plurals,
+                    "past" or "past tense" => result.PastTense,
+                    "past participle" => result.PastParticiple,
+                    "present participle" => result.PresentParticiple,
+                    "present" => result.PresentParticiple,
+                    "third person singular" or "third-person singular" => result.ThirdPersonSingular,
+                    "comparative" => result.Comparative,
+                    "superlative" => result.Superlative,
+                    _ => null
+                };
+
+                if (bucket is null) continue;
+
+                foreach (var form in forms)
+                    if (!bucket.Contains(form))
+                        bucket.Add(form);
+            }
         }
 
         // 派生词 / undefined run-on

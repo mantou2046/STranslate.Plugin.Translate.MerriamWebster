@@ -20,6 +20,7 @@ internal static class Program
         TestShortDefOnly();
         TestNestedBindingSubstitute();
         TestSpanishBilingual();
+        TestInflections();
         TestAudioUrls();
         TestMarkupCleaning();
         TestWordNormalization();
@@ -177,6 +178,73 @@ internal static class Program
     ]
     """;
 
+    // threshold 类形态 —— 用户截图报告的词。MW 的 `infl` 字段给出复数 `thresholds`，
+    // `prs` 字段给出美式发音与音频，`dt.vis` 给出每条义项下的例句。
+    private const string ThresholdJson = """
+    [
+      {
+        "meta": { "id": "threshold", "stems": ["threshold", "thresholds"] },
+        "hwi": {
+          "hw": "thresh*old",
+          "prs": [ { "mw": "\u02ccthre\u1e57\u02cch\u014dld", "sound": { "audio": "thresho01" } } ]
+        },
+        "fl": "noun",
+        "def": [
+          { "sseq": [
+            [
+              [ "sense", { "sn": "1 a", "dt": [
+                  [ "text", "{bc}a piece of wood, metal, or stone that forms the bottom of a door and that you walk over as you enter a room or building" ],
+                  [ "vis", [ { "t": "He stepped across the threshold." }, { "t": "When they were married he carried her over the threshold." } ] ]
+              ] } ]
+            ],
+            [
+              [ "sense", { "sn": "2", "dt": [
+                  [ "text", "{bc}the point or level at which something begins or changes" ],
+                  [ "vis", [ { "t": "If your income rises above a certain threshold, your tax rate also rises." } ] ]
+              ] } ]
+            ]
+          ] }
+        ],
+        "infl": [ { "infl": "thresholds", "label": "plural" } ],
+        "shortdef": [ "the bottom of a doorway", "the point at which something begins to change" ]
+      }
+    ]
+    """;
+
+    // run 类形态 —— 不规则动词，含 past/past participle/present participle 三种 infl。
+    private const string RunJson = """
+    [
+      {
+        "meta": { "id": "run", "stems": ["run", "runs", "running", "ran", "run"] },
+        "hwi": { "hw": "run", "prs": [ { "mw": "\u02c8r\u0259n", "sound": { "audio": "run000001" } } ] },
+        "fl": "verb",
+        "infl": [
+          { "infl": "ran", "label": "past" },
+          { "infl": "run", "label": "past participle" },
+          { "infl": "running", "label": "present participle" },
+          { "infl": "runs", "label": "third person singular" }
+        ],
+        "shortdef": [ "to go faster than a walk", "to move at a fast trot" ]
+      }
+    ]
+    """;
+
+    // good/well/better/best 类形态 —— 形容词 / 副词的不规则比较级。
+    private const string GoodJson = """
+    [
+      {
+        "meta": { "id": "good", "stems": ["good", "better", "best", "well", "better", "best"] },
+        "hwi": { "hw": "good", "prs": [ { "mw": "\u02c8g\u00fbd", "sound": { "audio": "good00001" } } ] },
+        "fl": "adjective",
+        "infl": [
+          { "infl": "better", "label": "comparative" },
+          { "infl": "best", "label": "superlative" }
+        ],
+        "shortdef": [ "agreeable or pleasing" ]
+      }
+    ]
+    """;
+
     private static List<MwEntry> Parse(string json) =>
         JsonSerializer.Deserialize<List<MwEntry>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
     // ------------------------------------------------------------ the tests
@@ -186,23 +254,26 @@ internal static class Program
         Console.WriteLine("== voluminous (full def tree, sdsense, examples) ==");
         var entry = Parse(VoluminousJson)[0];
 
-        var means = MerriamParser.ExtractSenses(entry, showExamples: true);
-        foreach (var m in means) Console.WriteLine("    " + m);
+        var definitions = MerriamParser.ExtractDefinitions(entry);
+        foreach (var d in definitions) Console.WriteLine("    def: " + d);
+        var sentences = MerriamParser.ExtractSentences(entry);
+        foreach (var s in sentences) Console.WriteLine("    ex:  " + s);
 
-        Check("5 sense lines", means.Count == 5, $"got {means.Count}");
-        Check("no leading colon anywhere", means.All(m => !m.TrimStart().StartsWith(':')), "a definition starts with ':'");
-        Check("sdsense is its own line prefixed 'also: '", means.Any(m => m.StartsWith("also: ") && m.Contains("full")));
-        Check("cross-ref {sx|large||} resolved to 'large'", means.Any(m => m.Contains("large")));
-        Check("example from dt kept on main sense", means.Any(m => m.StartsWith("having") && m.Contains("例:") && m.Contains("tresses")));
-        Check("example from sdsense kept", means.Any(m => m.StartsWith("also:") && m.Contains("skirt")));
-        Check("middle boundary rendered as colon", means.Any(m => m.Contains("bulk: large")));
-        Check("sense 1b present", means.Any(m => m == "numerous"));
-        Check("sense 3 present", means.Any(m => m.Contains("many folds")));
-        Check("no brace residue", means.All(m => !m.Contains('{') && !m.Contains('}')));
+        Check("5 sense lines", definitions.Count == 5, $"got {definitions.Count}");
+        Check("no leading colon anywhere", definitions.All(d => !d.TrimStart().StartsWith(':')), "a definition starts with ':'");
+        Check("sdsense is its own line prefixed 'also: '", definitions.Any(d => d.StartsWith("also: ") && d.Contains("full")));
+        Check("cross-ref {sx|large||} resolved to 'large'", definitions.Any(d => d.Contains("large")));
+        Check("middle boundary rendered as colon", definitions.Any(d => d.Contains("bulk: large")));
+        Check("sense 1b present", definitions.Any(d => d == "numerous"));
+        Check("sense 3 present", definitions.Any(d => d.Contains("many folds")));
+        Check("no brace residue", definitions.All(d => !d.Contains('{') && !d.Contains('}')));
 
-        // without examples
-        var bare = MerriamParser.ExtractSenses(entry, showExamples: false);
-        Check("examples omitted when disabled", bare.All(m => !m.Contains("例:")), string.Join(" / ", bare));
+        // 例句应独立存在，不在定义里
+        Check("2 examples extracted from dt", sentences.Count == 2, $"got {sentences.Count}");
+        Check("examples contain 'tresses'", sentences.Any(s => s.Contains("tresses")));
+        Check("examples contain 'skirt'", sentences.Any(s => s.Contains("skirt")));
+        Check("definitions do NOT contain '例:' inline",
+              definitions.All(d => !d.Contains("例:")), string.Join(" / ", definitions));
 
         // headword + audio + run-ons
         Check("headword de-syllabified", MerriamParser.FormatHeadword(entry.Hwi!.Headword) == "voluminous",
@@ -218,62 +289,126 @@ internal static class Program
     {
         Console.WriteLine("\n== shortdef-only entries (no def tree) ==");
         var threeD = Parse(ThreeDJson)[0];
-        var means = MerriamParser.ExtractSenses(threeD, showExamples: true);
-        foreach (var m in means) Console.WriteLine("    " + m);
+        var definitions = MerriamParser.ExtractDefinitions(threeD);
+        foreach (var d in definitions) Console.WriteLine("    " + d);
 
-        Check("3-D falls back to shortdef", means.Count >= 1, $"got {means.Count}");
-        Check("3-D shortdef cleaned", means.All(m => !m.Contains('{')), string.Join(" / ", means));
+        Check("3-D falls back to shortdef", definitions.Count >= 1, $"got {definitions.Count}");
+        Check("3-D shortdef cleaned", definitions.All(d => !d.Contains('{')), string.Join(" / ", definitions));
         Check("3-D number-subdir audio",
               MerriamParser.BuildAudioUrl("3d000001").EndsWith("/number/3d000001.mp3"),
               MerriamParser.BuildAudioUrl("3d000001"));
 
         var ten = Parse(TenaciousJson)[0];
-        var tenMeans = MerriamParser.ExtractSenses(ten, showExamples: false);
-        Check("tenacious 2 senses", tenMeans.Count == 2, $"got {tenMeans.Count}");
+        var tenDefs = MerriamParser.ExtractDefinitions(ten);
+        Check("tenacious 2 senses", tenDefs.Count == 2, $"got {tenDefs.Count}");
         Check("cross-refs {sx|} resolved in shortdef",
-              tenMeans.Any(m => m.Contains("not easily stopped or persistent")), string.Join(" / ", tenMeans));
+              tenDefs.Any(d => d.Contains("not easily stopped or persistent")), string.Join(" / ", tenDefs));
     }
 
     private static void TestNestedBindingSubstitute()
     {
         Console.WriteLine("\n== nested binding substitute (sseq inside sense) ==");
         var entry = Parse(FelineJson)[0];
-        var means = MerriamParser.ExtractSenses(entry, showExamples: true);
-        foreach (var m in means) Console.WriteLine("    " + m);
+        var definitions = MerriamParser.ExtractDefinitions(entry);
+        foreach (var d in definitions) Console.WriteLine("    " + d);
 
-        Check("binding substitute kept", means.Any(m => m.Contains("resembling a cat")), "missing parent sense");
-        Check("sub-sense 2a flattened", means.Any(m => m.Contains("sleekly graceful")));
-        Check("sub-sense 2b flattened", means.Any(m => m.Contains("sly, treacherous")));
-        Check("4 senses total", means.Count == 4, $"got {means.Count}");
+        Check("binding substitute kept", definitions.Any(d => d.Contains("resembling a cat")), "missing parent sense");
+        Check("sub-sense 2a flattened", definitions.Any(d => d.Contains("sleekly graceful")));
+        Check("sub-sense 2b flattened", definitions.Any(d => d.Contains("sly, treacherous")));
+        Check("4 senses total", definitions.Count == 4, $"got {definitions.Count}");
+        Check("no inline examples", definitions.All(d => !d.Contains("例:")));
     }
 
     private static void TestSpanishBilingual()
     {
         Console.WriteLine("\n== Spanish-English (bilingual: gl gloss + tr translation) ==");
         var entry = Parse(SpanishJson)[0];
-        var means = MerriamParser.ExtractSenses(entry, showExamples: true);
-        foreach (var m in means) Console.WriteLine("    " + m);
+        var definitions = MerriamParser.ExtractDefinitions(entry);
+        var sentences = MerriamParser.ExtractSentences(entry);
+        foreach (var d in definitions) Console.WriteLine("    def: " + d);
+        foreach (var s in sentences) Console.WriteLine("    ex:  " + s);
 
-        Check("2 senses", means.Count == 2, $"got {means.Count}");
-        Check("Spanish equivalents present", means.Any(m => m.Contains("idioma")));
-        Check("second equivalent present", means.Any(m => m.Contains("lengua")));
-        Check("gloss 'masculine' kept", means.Any(m => m.Contains("(masculine)")), string.Join(" / ", means));
-        Check("gloss 'feminine' kept", means.Any(m => m.Contains("(feminine)")), string.Join(" / ", means));
-        Check("example translation via tr kept", means.Any(m => m.Contains("→") && m.Contains("el idioma inglés")),
-              string.Join(" / ", means));
-        Check("second sense translation kept", means.Any(m => m.Contains("lenguaje corporal")));
-        Check("no brace residue", means.All(m => !m.Contains('{')));
-        Check("no leading colon", means.All(m => !m.TrimStart().StartsWith(':')));
+        Check("2 senses", definitions.Count == 2, $"got {definitions.Count}");
+        Check("Spanish equivalents present", definitions.Any(d => d.Contains("idioma")));
+        Check("second equivalent present", definitions.Any(d => d.Contains("lengua")));
+        Check("gloss 'masculine' kept", definitions.Any(d => d.Contains("(masculine)")), string.Join(" / ", definitions));
+        Check("gloss 'feminine' kept", definitions.Any(d => d.Contains("(feminine)")), string.Join(" / ", definitions));
+        Check("no brace residue", definitions.All(d => !d.Contains('{')));
+        Check("no leading colon", definitions.All(d => !d.TrimStart().StartsWith(':')));
         Check("gloss appears after its equivalent, not before",
-              !means.Any(m => m.TrimStart().StartsWith("(masculine)")), "gloss leaked to line start");
+              !definitions.Any(d => d.TrimStart().StartsWith("(masculine)")), "gloss leaked to line start");
 
-        var bare = MerriamParser.ExtractSenses(entry, showExamples: false);
-        Check("examples omitted but glosses kept when disabled",
-              bare.All(m => !m.Contains("→")) && bare.Any(m => m.Contains("(masculine)")),
-              string.Join(" / ", bare));
+        // 例句独立到 Sentences，且西英库的 tr 译文保留
+        Check("2 sentences extracted", sentences.Count == 2, $"got {sentences.Count}");
+        Check("first sentence has translation arrow", sentences.Any(s => s.Contains("→") && s.Contains("el idioma inglés")));
+        Check("second sentence has translation", sentences.Any(s => s.Contains("lenguaje corporal")));
     }
 
-    private static void TestAudioUrls()
+    /// <summary>
+/// 用户截图报告的核心 bug：Merriam-Webster 插件的释义区把例句用「例:」内联，
+/// 视觉上糊成一团。学习必应词典的处理：
+/// - 例句放进 <c>result.Sentences</c>（宿主 UI 会单独渲染成一栏）；
+/// - 变形（复数 / 过去式 / 比较级等）放进 <c>result.Plurals</c> / <c>PastTense</c> 等专门集合；
+/// - 音标 / 音频放进 <c>result.Symbols</c>（每个口音一个 Symbol）。
+/// </summary>
+private static void TestInflections()
+{
+    Console.WriteLine("\n== infl field (noun plurals, verb forms, comparative/superlative) ==");
+
+    // ---- 名词复数（threshold 是用户报告的词）----
+    var threshold = Parse(ThresholdJson)[0];
+    var thresholdInfl = MerriamParser.ExtractInflections(threshold);
+    foreach (var (label, forms) in thresholdInfl) Console.WriteLine($"    {label}: {string.Join(", ", forms)}");
+    Check("threshold has 'plural' infl", thresholdInfl.ContainsKey("plural"));
+    Check("threshold plural = 'thresholds'", thresholdInfl["plural"].Single() == "thresholds");
+
+    var thresholdDefs = MerriamParser.ExtractDefinitions(threshold);
+    var thresholdSentences = MerriamParser.ExtractSentences(threshold);
+    foreach (var d in thresholdDefs) Console.WriteLine("    def: " + d);
+    foreach (var s in thresholdSentences) Console.WriteLine("    ex:  " + s);
+    Check("threshold: 2 clean definitions", thresholdDefs.Count == 2, $"got {thresholdDefs.Count}");
+    Check("threshold: no 例: inline",
+          thresholdDefs.All(d => !d.Contains("例:")),
+          string.Join(" / ", thresholdDefs));
+    Check("threshold: 3 sentences extracted", thresholdSentences.Count == 3, $"got {thresholdSentences.Count}");
+    Check("threshold: sentences don't appear in definitions",
+          thresholdSentences.All(s => !thresholdDefs.Any(d => d.Contains(s))));
+
+    // ---- 动词屈折（不规则动词 run）----
+    var run = Parse(RunJson)[0];
+    var runInfl = MerriamParser.ExtractInflections(run);
+    foreach (var (label, forms) in runInfl) Console.WriteLine($"    run.{label}: {string.Join(", ", forms)}");
+    Check("run: past = 'ran'", runInfl["past"].Single() == "ran");
+    Check("run: past participle = 'run'", runInfl["past participle"].Single() == "run");
+    Check("run: present participle = 'running'", runInfl["present participle"].Single() == "running");
+    Check("run: third person singular = 'runs'", runInfl["third person singular"].Single() == "runs");
+
+    // ---- 形容词比较级 / 最高级（不规则 good）----
+    var good = Parse(GoodJson)[0];
+    var goodInfl = MerriamParser.ExtractInflections(good);
+    foreach (var (label, forms) in goodInfl) Console.WriteLine($"    good.{label}: {string.Join(", ", forms)}");
+    Check("good: comparative = 'better'", goodInfl["comparative"].Single() == "better");
+    Check("good: superlative = 'best'", goodInfl["superlative"].Single() == "best");
+
+    // ---- 无 infl 字段的条目（threshold 之外的简单条目）----
+    var ten = Parse(TenaciousJson)[0];
+    Check("tenacious has no infl", MerriamParser.ExtractInflections(ten).Count == 0,
+          string.Join(",", MerriamParser.ExtractInflections(ten).Keys));
+
+    // ---- 音标与音频：threshold 应该有发音 ----
+    var prs = threshold.Hwi?.Pronunciations;
+    Check("threshold has at least one pronunciation", prs is { Count: > 0 });
+    Check("threshold pronunciation has mw", prs![0].Mw != null && prs![0].Mw!.Length > 0, prs![0].Mw);
+    Check("threshold pronunciation has audio",
+          prs![0].Sound?.Audio == "thresho01",
+          prs![0].Sound?.Audio);
+    Check("threshold audio URL",
+          MerriamParser.BuildAudioUrl(prs![0].Sound!.Audio) ==
+          "https://media.merriam-webster.com/audio/prons/en/us/mp3/t/thresho01.mp3",
+          MerriamParser.BuildAudioUrl(prs![0].Sound!.Audio));
+}
+
+private static void TestAudioUrls()
     {
         Console.WriteLine("\n== audio URL subdirectory rules ==");
         Check("bix prefix -> bix/", MerriamParser.BuildAudioUrl("bixox").EndsWith("/bix/bixox.mp3"));
@@ -423,7 +558,7 @@ internal static class Program
 
         foreach (var reference in new[] { "collegiate", "learners" })
         {
-            foreach (var word in new[] { "hello", "voluminous", "tenacious" })
+            foreach (var word in new[] { "hello", "voluminous", "tenacious", "threshold", "run", "good" })
             {
                 var url = $"https://dictionaryapi.com/api/v3/references/{reference}/json/{word}?key={Uri.EscapeDataString(key)}";
                 string body;
@@ -463,21 +598,40 @@ internal static class Program
                 var entries = JsonSerializer.Deserialize<List<MwEntry>>(body,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
 
-                var means = entries.SelectMany(e => MerriamParser.ExtractSenses(e, true)).ToList();
+                var means = entries.SelectMany(e => MerriamParser.ExtractDefinitions(e)).ToList();
                 var headword = entries.Select(e => e.Hwi?.Headword).FirstOrDefault(h => !string.IsNullOrWhiteSpace(h));
-                var audio = entries.SelectMany(e => e.Hwi?.Pronunciations ?? [])
-                                   .Select(p => MerriamParser.BuildAudioUrl(p.Sound?.Audio))
-                                   .FirstOrDefault(a => !string.IsNullOrWhiteSpace(a));
+                var pronunciation = entries.SelectMany(e => e.Hwi?.Pronunciations ?? [])
+                                          .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.Mw));
+                var audio = pronunciation is null
+                    ? string.Empty
+                    : MerriamParser.BuildAudioUrl(pronunciation.Sound?.Audio);
+                var sentences = entries.SelectMany(MerriamParser.ExtractSentences).ToList();
+                var inflCount = entries.Sum(e => MerriamParser.ExtractInflections(e).Count);
 
                 Console.WriteLine($"    [{reference}] {word} -> headword={MerriamParser.FormatHeadword(headword)}, " +
-                                  $"senses={means.Count}, audio={(string.IsNullOrEmpty(audio) ? "none" : "yes")}");
-                foreach (var m in means.Take(3)) Console.WriteLine("        " + m);
+                                  $"defs={means.Count}, ex={sentences.Count}, infl={inflCount}, " +
+                                  $"phonetic={(pronunciation?.Mw ?? "(none)")}, audio={(string.IsNullOrEmpty(audio) ? "none" : "yes")}");
+                foreach (var m in means.Take(3)) Console.WriteLine("        def: " + m);
+                if (sentences.Count > 0) Console.WriteLine($"        ex[0]: {sentences[0]}");
 
                 Check($"[{reference}] {word} parsed headword", !string.IsNullOrWhiteSpace(MerriamParser.FormatHeadword(headword)));
-                Check($"[{reference}] {word} has senses", means.Count > 0, "no senses extracted");
+                Check($"[{reference}] {word} has defs", means.Count > 0, "no defs extracted");
                 Check($"[{reference}] {word} no brace residue", means.All(m => !m.Contains('{')));
                 Check($"[{reference}] {word} no leading colon", means.All(m => !m.TrimStart().StartsWith(':')));
                 Check($"[{reference}] {word} no empty defs", means.All(m => !string.IsNullOrWhiteSpace(m)));
+                Check($"[{reference}] {word} no inline '例:' in defs",
+                      means.All(m => !m.Contains("例:")),
+                      string.Join(" / ", means));
+                Check($"[{reference}] {word} defs don't contain sentences",
+                      means.All(m => sentences.All(s => !m.Contains(s))));
+
+                // 用户报告的核心 bug：音标必须填进 Symbol 才能在宿主里渲染出来
+                Check($"[{reference}] {word} has pronunciation mw",
+                      pronunciation?.Mw is { Length: > 0 },
+                      pronunciation?.Mw ?? "(null)");
+                Check($"[{reference}] {word} has audio url",
+                      !string.IsNullOrEmpty(audio),
+                      audio);
             }
         }
     }
