@@ -75,7 +75,7 @@ Invalid API key. Not subscribed for this reference.
 
 ## 📦 安装
 
-1. 前往本项目的 **Releases** 页面，下载最新的 `STranslate.Plugin.Translate.MerriamWebster.spkg`。
+1. 前往 [Releases](https://github.com/mantou2046/STranslate.Plugin.Translate.MerriamWebster/releases) 页面，下载最新的 `STranslate.Plugin.Translate.MerriamWebster.spkg`。
 2. 打开 STranslate → **设置** → **插件** → **添加插件**，选择下载的 `.spkg` 文件。
 3. 在 **文本翻译 → 词典** 中点击 **添加**，选择 **Merriam-Webster**。
 

@@ -2,9 +2,9 @@
   "PluginID": "b7c41d6e2a9345f0bc8e1f5a7d3c9e02",
   "Name": "Merriam-Webster",
   "Description": "Merriam-Webster dictionary plugin for STranslate",
-  "Author": "your-github-username",
+  "Author": "mantou2046",
   "Version": "1.0.2",
-  "Website": "https://github.com/your-github-username/STranslate.Plugin.Translate.MerriamWebster",
+  "Website": "https://github.com/mantou2046/STranslate.Plugin.Translate.MerriamWebster",
   "ExecuteFileName": "STranslate.Plugin.Translate.MerriamWebster.dll",
   "IconPath": "icon.png"
 }
