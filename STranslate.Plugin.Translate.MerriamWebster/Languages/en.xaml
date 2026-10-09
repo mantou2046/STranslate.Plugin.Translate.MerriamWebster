@@ -1,0 +1,24 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_ApiKey">API Key</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_ApiKey_Description">The API Key issued by dictionaryapi.com. Keys for Collegiate and Learner's both work here.</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_ApiKey_Placeholder">Enter your API Key</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Reference">Dictionary</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Reference_Description">Reference to query. Note that Learner's, Medical and Spanish require separate subscriptions; if the key is not entitled the plugin falls back automatically.</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Options">Options</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Options_Description">Control how definitions are rendered.</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_ShowExamples">Append example sentences to definitions</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Fallback">Fall back to the Collegiate dictionary when the current one has no entry</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Info">Introduction</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Info_Content">Looks up definitions, phonetics, audio pronunciations and word forms via the Merriam-Webster dictionaryapi.com service.</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_MissingApiKey">Please set your dictionaryapi.com API Key in the plugin settings first.</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_InvalidKey">The API Key is invalid, or it is not subscribed to the selected dictionary. Check the Key in the plugin settings and make sure the dictionary is subscribed (Learner's / Medical / Spanish-English require separate subscriptions).</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_NonLatinInput">Merriam-Webster only provides English and Spanish-English dictionaries, so non-English queries such as Chinese are not supported. Please use a translation service that supports Chinese.</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_RequestFailed">Merriam-Webster request failed: {0}</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Derived">Derived forms</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Definition">Definition</sys:String>
+
+</ResourceDictionary>

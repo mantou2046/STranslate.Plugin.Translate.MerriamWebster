@@ -1,0 +1,24 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_ApiKey">API Key</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_ApiKey_Description">在 dictionaryapi.com 注册后获取的 API Key，Collegiate 与 Learner's 两个 Key 均可使用。</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_ApiKey_Placeholder">请输入 API Key</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Reference">词典</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Reference_Description">选择要查询的参考词典。注意：Learner's、Medical、Spanish 需要单独订阅，Key 不通用时会自动回退。</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Options">选项</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Options_Description">控制释义的展示方式。</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_ShowExamples">在释义后附带例句</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Fallback">当前词典查不到时，回退到 Collegiate 词典</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Info">介绍</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Info_Content">通过 Merriam-Webster dictionaryapi.com 查询英英释义、音标、发音与词形变化。</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_MissingApiKey">请先在插件设置中填写 dictionaryapi.com 的 API Key。</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_InvalidKey">API Key 无效，或该 Key 未订阅所选词典。请在插件设置中检查 Key，并确认已订阅对应词典（Learner's / Medical / Spanish-English 需单独订阅）。</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_NonLatinInput">Merriam-Webster 只有英英 / 英西词典，不支持中文等非英文查询。请改用支持中英互译的翻译服务。</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_RequestFailed">Merriam-Webster 查询失败：{0}</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Derived">派生词</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_MerriamWebster_Definition">释义</sys:String>
+
+</ResourceDictionary>

@@ -1,0 +1,21 @@
+.vs/
+bin/
+obj/
+*.user
+.idea/
+.dist/
+
+packages/
+
+.DS_Store
+
+publish/
+
+# rust
+target/
+
+.artifacts/
+
+# test build artifacts
+tests/**/bin/
+tests/**/obj/

@@ -1,0 +1,74 @@
+<UserControl
+    x:Class="STranslate.Plugin.Translate.MerriamWebster.View.SettingsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:ikw="http://schemas.inkore.net/lib/ui/wpf"
+    xmlns:local="clr-namespace:STranslate.Plugin.Translate.MerriamWebster"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:plugin="clr-namespace:STranslate.Plugin;assembly=STranslate.Plugin"
+    xmlns:ui="http://schemas.inkore.net/lib/ui/wpf/modern"
+    xmlns:vm="clr-namespace:STranslate.Plugin.Translate.MerriamWebster.ViewModel"
+    d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    mc:Ignorable="d">
+
+    <ikw:SimpleStackPanel Spacing="12">
+        <ui:SettingsCard
+            Description="{DynamicResource STranslate_Plugin_Translate_MerriamWebster_ApiKey_Description}"
+            Header="{DynamicResource STranslate_Plugin_Translate_MerriamWebster_ApiKey}">
+            <ui:SettingsCard.HeaderIcon>
+                <ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.Key_24_Regular}" />
+            </ui:SettingsCard.HeaderIcon>
+            <PasswordBox
+                MinWidth="300"
+                plugin:PasswordBoxAssistant.Attach="True"
+                plugin:PasswordBoxAssistant.Password="{Binding ApiKey}"
+                ui:ControlHelper.PlaceholderText="{DynamicResource STranslate_Plugin_Translate_MerriamWebster_ApiKey_Placeholder}" />
+        </ui:SettingsCard>
+
+        <ui:SettingsCard
+            Description="{DynamicResource STranslate_Plugin_Translate_MerriamWebster_Reference_Description}"
+            Header="{DynamicResource STranslate_Plugin_Translate_MerriamWebster_Reference}">
+            <ui:SettingsCard.HeaderIcon>
+                <ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.BookQuestionMark_24_Regular}" />
+            </ui:SettingsCard.HeaderIcon>
+            <ComboBox MinWidth="300" SelectedValue="{Binding Reference}" SelectedValuePath="Tag">
+                <ComboBoxItem Content="Collegiate (英英)" Tag="{x:Static local:MerriamReference.Collegiate}" />
+                <ComboBoxItem Content="Learner's (英英)" Tag="{x:Static local:MerriamReference.Learners}" />
+                <ComboBoxItem Content="Medical (英英)" Tag="{x:Static local:MerriamReference.Medical}" />
+                <ComboBoxItem Content="Spanish-English (英西双语)" Tag="{x:Static local:MerriamReference.Spanish}" />
+            </ComboBox>
+        </ui:SettingsCard>
+
+        <ui:SettingsCard
+            Description="{DynamicResource STranslate_Plugin_Translate_MerriamWebster_Options_Description}"
+            Header="{DynamicResource STranslate_Plugin_Translate_MerriamWebster_Options}">
+            <ui:SettingsCard.HeaderIcon>
+                <ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.Options_24_Regular}" />
+            </ui:SettingsCard.HeaderIcon>
+            <ikw:SimpleStackPanel MinWidth="300" Spacing="6">
+                <CheckBox
+                    Content="{DynamicResource STranslate_Plugin_Translate_MerriamWebster_ShowExamples}"
+                    IsChecked="{Binding ShowExamples}" />
+                <CheckBox
+                    Content="{DynamicResource STranslate_Plugin_Translate_MerriamWebster_Fallback}"
+                    IsChecked="{Binding FallbackToCollegiate}" />
+            </ikw:SimpleStackPanel>
+        </ui:SettingsCard>
+
+        <ui:SettingsCard Header="{DynamicResource STranslate_Plugin_Translate_MerriamWebster_Info}">
+            <ui:SettingsCard.HeaderIcon>
+                <ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.Info_20_Regular}" />
+            </ui:SettingsCard.HeaderIcon>
+            <WrapPanel Orientation="Horizontal">
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Text="{DynamicResource STranslate_Plugin_Translate_MerriamWebster_Info_Content}"
+                    TextWrapping="Wrap" />
+                <ui:HyperlinkButton Content="dictionaryapi.com" NavigateUri="https://dictionaryapi.com/" />
+            </WrapPanel>
+        </ui:SettingsCard>
+    </ikw:SimpleStackPanel>
+</UserControl>
