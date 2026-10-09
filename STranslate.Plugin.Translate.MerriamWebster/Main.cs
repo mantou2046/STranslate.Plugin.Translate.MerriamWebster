@@ -192,18 +192,17 @@ public class Main : DictionaryPluginBase
         result.Text = MerriamParser.FormatHeadword(headword);
         result.ResultType = DictionaryResultType.Success;
 
-        // 音标与发音音频（取第一个有效发音；该接口只有美式发音）
-        var pronunciation = entries
-            .SelectMany(e => e.Hwi?.Pronunciations ?? [])
-            .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.Mw));
-
-        if (pronunciation is not null)
+        // 音标与发音音频。
+        // 宿主 UI 会用 StringFormat 再包一层 "/…/"，这里不要自加斜杠，否则会变成 "//…//"。
+        // 不同参考库音标字段不同（mw vs ipa），由 ExtractPronunciation 统一兜底。
+        var (phonetic, audioUrl) = MerriamParser.ExtractPronunciation(entries);
+        if (!string.IsNullOrWhiteSpace(phonetic))
         {
             result.Symbols.Add(new Symbol
             {
                 Label = "us",
-                Phonetic = $"/{pronunciation.Mw!.Trim()}/",
-                AudioUrl = MerriamParser.BuildAudioUrl(pronunciation.Sound?.Audio)
+                Phonetic = phonetic!.Trim(),
+                AudioUrl = audioUrl
             });
         }
 

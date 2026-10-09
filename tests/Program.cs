@@ -21,6 +21,7 @@ internal static class Program
         TestNestedBindingSubstitute();
         TestSpanishBilingual();
         TestInflections();
+        TestPronunciation();
         TestAudioUrls();
         TestMarkupCleaning();
         TestWordNormalization();
@@ -245,6 +246,30 @@ internal static class Program
     ]
     """;
 
+    // Learners 词典：音标字段是 `ipa`（国际音标），不是 `mw`。
+    // 这是用户报告「音标不显示」的根因 —— 之前模型只读了 mw。
+    private const string LearnersJson = """
+    [
+      {
+        "meta": { "id": "threshold", "stems": ["threshold", "thresholds"] },
+        "hwi": {
+          "hw": "thresh*old",
+          "prs": [ { "ipa": "ˈthreʃˌhoʊld", "sound": { "audio": "thresho01" } } ]
+        },
+        "fl": "noun",
+        "def": [
+          { "sseq": [
+            [ [ "sense", { "sn": "1", "dt": [
+                [ "text", "{bc}a piece of wood or stone that forms the bottom of a doorway" ],
+                [ "vis", [ { "t": "He stepped across the threshold." } ] ]
+            ] } ] ]
+          ] }
+        ],
+        "shortdef": [ "the bottom of a doorway" ]
+      }
+    ]
+    """;
+
     private static List<MwEntry> Parse(string json) =>
         JsonSerializer.Deserialize<List<MwEntry>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
     // ------------------------------------------------------------ the tests
@@ -407,6 +432,50 @@ private static void TestInflections()
           "https://media.merriam-webster.com/audio/prons/en/us/mp3/t/thresho01.mp3",
           MerriamParser.BuildAudioUrl(prs![0].Sound!.Audio));
 }
+
+    /// <summary>
+    /// 核心回归：音标必须能填进 Symbol，否则宿主不显示。
+    /// Collegiate 库用 `mw`，Learners 库用 `ipa` —— 两种都要能读到。
+    /// </summary>
+    private static void TestPronunciation()
+    {
+        Console.WriteLine("\n== pronunciation: mw (Collegiate) vs ipa (Learners) ==");
+
+        // Collegiate 风格：prs 只有 mw
+        var threshold = Parse(ThresholdJson)[0];
+        var mwRaw = threshold.Hwi!.Pronunciations![0].Mw;
+        var (mwPhonetic, mwAudio) = MerriamParser.ExtractPronunciation([threshold]);
+        Check("threshold (collegiate) phonetic picked from mw",
+              mwPhonetic == mwRaw,
+              $"got {mwPhonetic}, expected {mwRaw}");
+        Check("threshold (collegiate) no leading slash in data",
+              mwPhonetic is not null && !mwPhonetic.StartsWith('/'),
+              mwPhonetic);
+        Check("threshold (collegiate) audio url built",
+              mwAudio == "https://media.merriam-webster.com/audio/prons/en/us/mp3/t/thresho01.mp3",
+              mwAudio);
+
+        // Learners 风格：prs 只有 ipa，没有 mw —— 之前这里会读不到，导致音标整块消失
+        var learners = Parse(LearnersJson)[0];
+        var ipaRaw = learners.Hwi!.Pronunciations![0].Ipa;
+        var (ipaPhonetic, ipaAudio) = MerriamParser.ExtractPronunciation([learners]);
+        Check("learners phonetic picked from ipa (mw absent)",
+              ipaPhonetic == ipaRaw,
+              $"got {ipaPhonetic}, expected {ipaRaw}");
+        Check("learners pronunciations has no mw",
+              learners.Hwi?.Pronunciations?[0].Mw is null,
+              learners.Hwi?.Pronunciations?[0].Mw ?? "null");
+        Check("learners audio url still built from sound.audio",
+              ipaAudio == "https://media.merriam-webster.com/audio/prons/en/us/mp3/t/thresho01.mp3",
+              ipaAudio);
+
+        // 无发音的条目：应返回空，而不是抛异常或返回垃圾值
+        var noPron = Parse(""" [ { "meta": { "id": "x" }, "hwi": { "hw": "x" }, "fl": "noun" } ] """)[0];
+        var (nonePhonetic, noneAudio) = MerriamParser.ExtractPronunciation([noPron]);
+        Check("entry without prs yields empty phonetic",
+              string.IsNullOrEmpty(nonePhonetic) && noneAudio == string.Empty,
+              $"phonetic={nonePhonetic}, audio={noneAudio}");
+    }
 
 private static void TestAudioUrls()
     {

@@ -62,6 +62,17 @@ noun
 
 以 `threshold` 为例，**修复前**是「定义+例句糊成一段」，**修复后**拆成「noun 两行 + 例句三行 + 复数 thresholds」，看起来会清爽很多。
 
+### 1.0.4 之后：音标兼容 `mw` 与 `ipa` 两种字段
+
+dictionaryapi.com 不同参考库给的音标字段不一样，这曾导致「选了某些词典时音标整块消失」：
+
+| 参考库 | 音标字段 | 示例值 |
+| --- | --- | --- |
+| Collegiate / Medical | `hwi.prs[].mw`（韦氏自创拼读） | `ˈthreʃˌhōld` |
+| Learner's / Spanish-English | `hwi.prs[].ipa`（国际音标） | `ˈthreʃˌhoʊld` |
+
+**1.0.4 之前**插件只读 `mw`，所以在 Learner's / 英西库下读不到音标，`result.Symbols` 为空，宿主就不渲染音标行 —— 这正是「同样用词典插件，FreeDict 有音标、本插件没有」的原因。**1.0.4** 起统一走 `MerriamParser.ExtractPronunciation()`：优先 `mw`，缺失时回退 `ipa`，所有参考库都能显示音标与发音。同时去掉了插件侧多余的斜杠（宿主 `OutputControl` 已用 `StringFormat='/\{0\}/'` 包了一层），音标显示为标准 `/ˈθrɛʃhoʊld/` 而非 `//ˈθrɛʃhoʊld//`。
+
 ### 查中文会看到什么
 
 **别被这条报错误导**：dictionaryapi.com 对「key 无效」和「查了它不认识的词」返回的是**同一条纯文本**：
@@ -86,7 +97,7 @@ Invalid API key. Not subscribed for this reference.
 
 - 📖 **英英释义**：按词性（noun / verb / adjective …）分组的完整释义，自动展开 `sseq` 嵌套义项与 `sdsense`（"also / especially"）补充义项。
 - 🗣️ **英西双语**：选用 `Spanish-English` 库时，返回西班牙语对译词，并解析 `gl` 性别标注与例句 `tr` 译文。
-- 🔊 **音标与真人发音**：Merriam-Webster 音标写法 + 官方 mp3 发音（插件会按官方规则自动推导音频地址），落进 `Symbols`，宿主渲染成 `/ˈθrɛʃhoʊld/` + 🔊。
+- 🔊 **音标与真人发音**：兼容 `mw`（韦氏拼读）与 `ipa`（国际音标）两种字段，官方 mp3 发音地址按规则自动推导，落进 `Symbols`，宿主渲染成 `/ˈθrɛʃhoʊld/` + 🔊。
 - 📝 **例句单独成栏**：`vis` 中的例句不再用 `例:` 内联糊在定义里，而是放进 SDK 的 `Sentences` 集合，由宿主单独渲染（与必应词典一致）。
 - 🌱 **词形变化卡片**：从 `infl` 字段解析复数 / 过去式 / 过去分词 / 现在分词 / 第三人称单数 / 比较级 / 最高级，分别填进 `Plurals` / `PastTense` / `PastParticiple` / `PresentParticiple` / `ThirdPersonSingular` / `Comparative` / `Superlative`，由宿主对应卡片渲染。
 - 🌿 **派生词**：`uros` 派生词单独成组，`stems` 屈折形式放入标签。
@@ -141,7 +152,7 @@ Release 构建会自动生成插件包：
 
 ### 解析逻辑测试
 
-解析逻辑抽在纯静态类 `MerriamParser` 中，不依赖 WPF / 宿主，可独立测试。测试用例使用**官方 JSON 文档里给出的真实响应结构**（voluminous / feline / 3-D / 西英 language 等），并覆盖标记清理、音频目录规则、单词规范化、**文字脚本判定**与**接口错误分类**，共 96 条断言：
+解析逻辑抽在纯静态类 `MerriamParser` 中，不依赖 WPF / 宿主，可独立测试。测试用例使用**官方 JSON 文档里给出的真实响应结构**（voluminous / feline / 3-D / 西英 language / Learner's 的 ipa 发音等），并覆盖标记清理、音频目录规则、单词规范化、**音标字段兼容（mw / ipa）**、**文字脚本判定**与**接口错误分类**，共 122 条断言：
 
 ```powershell
 # 离线用例

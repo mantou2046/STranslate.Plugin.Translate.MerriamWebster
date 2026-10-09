@@ -78,9 +78,14 @@ public class MwHeadwordInfo
 /// <summary>单条发音。</summary>
 public class MwPronunciation
 {
-    /// <summary>Merriam-Webster 音标写法，例如 "və-ˈlü-mə-nəs"。</summary>
+    /// <summary>Merriam-Webster 自有拼读写法（Collegiate / Medical 库用），例如 "və-ˈlü-mə-nəs"。</summary>
     [JsonPropertyName("mw")]
     public string? Mw { get; set; }
+
+    /// <summary>国际音标（Learners / Spanish 库用），例如 "ˈthreshˌhōld"。
+    /// 不同参考库用的音标字段不同，必须两个都读，否则选了 Learners 库时就读不到音标。</summary>
+    [JsonPropertyName("ipa")]
+    public string? Ipa { get; set; }
 
     [JsonPropertyName("sound")]
     public MwSound? Sound { get; set; }

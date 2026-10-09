@@ -54,6 +54,29 @@ public static class MerriamParser
         return text.Trim();
     }
 
+    /// <summary>
+    /// 从词条里挑出第一个可用的发音（音标文本 + 音频 URL）。
+    /// 不同参考库使用的音标字段不同：Collegiate / Medical 用 <c>mw</c>（韦氏自创拼读），
+    /// Learners / Spanish 用 <c>ipa</c>（国际音标）。两者都要尝试，
+    /// 否则选了 Learners 库时 <c>mw</c> 为空，宿主就不会显示任何音标。
+    /// 返回的 tuple 中 Phonetic 不带斜杠 —— 宿主 UI 会再用 StringFormat 包一层 "/…/"。
+    /// </summary>
+    public static (string? Phonetic, string AudioUrl) ExtractPronunciation(List<MwEntry> entries)
+    {
+        var pronunciation = entries
+            .SelectMany(e => e.Hwi?.Pronunciations ?? [])
+            .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.Mw) || !string.IsNullOrWhiteSpace(p.Ipa));
+
+        if (pronunciation is null)
+            return (null, string.Empty);
+
+        var phonetic = !string.IsNullOrWhiteSpace(pronunciation.Mw)
+            ? pronunciation.Mw
+            : pronunciation.Ipa;
+
+        return (phonetic, BuildAudioUrl(pronunciation.Sound?.Audio));
+    }
+
     /// <summary>音频基础名转完整 URL，目录规则见官方 JSON 文档。</summary>
     public static string BuildAudioUrl(string? audio)
     {

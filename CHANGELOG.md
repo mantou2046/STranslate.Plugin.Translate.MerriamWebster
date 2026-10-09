@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.4
+
+- **修复：音标与发音音频在部分词典下完全不显示。**
+  根因是解析层只读了 `hwi.prs[].mw`（韦氏自创拼读）。但 dictionaryapi.com 不同参考库用的音标字段不同：
+  **Collegiate / Medical 用 `mw`，Learner's / Spanish-English 用 `ipa`**。选了 Learner's 库时 `mw` 为空，
+  插件就不会往 `result.Symbols` 里加任何 `Symbol`，宿主于是整块音标都不渲染 —— 而同样基于
+  `DictionaryPluginBase` 的 FreeDict 因为同时读了 `mw` 与 `ipa`，所以显示正常。
+  现在新增 `MerriamParser.ExtractPronunciation()`：优先取 `mw`，缺失时回退 `ipa`，两条音标路径都能命中。
+- **修复：音标被包了两层斜杠（`//ˈθrɛʃhoʊld//`）。**
+  宿主 `OutputControl` 的音标文本本身带 `StringFormat='/\{0\}/'`，会再包一层 `/…/`；
+  插件侧不应自加斜杠，现已去掉，显示为标准 `/ˈθrɛʃhoʊld/`。
+- 音频按钮的显示条件（宿主侧 `AudioUrl` 非空才出现小喇叭）不受影响，音频地址仍按官方目录规则推导。
+- 测试断言由 115 条增加到 **122 条**：新增 Learner's 风格 fixture（`prs` 只有 `ipa`）与 `TestPronunciation`，
+  覆盖「mw 存在取 mw / mw 缺失取 ipa / 无发音返回空」三种情况。
+
 ## 1.0.3
 
 - **重做释义排版：例句与词形变化独立成区，不再混在定义里。**
